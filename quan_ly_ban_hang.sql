@@ -1,28 +1,3 @@
-create database quan_ly_sinh_vien;
-use quan_ly_sinh_vien;
-
-create table class(
-   id int auto_increment,
-   name_student varchar(255),
-   primary key(id)
-);
-
-create table teachers(
-    id int auto_increment,
-    name_teacher varchar(255),
-    ages int,
-    country varchar(255),
-    primary key(id)
-);
-create table students(
- id int auto_increment,
- name_students varchar(255) not null,
- age int not null,
- country varchar(255),
- primary key(id)
-);
-
-
 create database quan_ly_ban_hang;
 use quan_ly_ban_hang;
 
@@ -58,4 +33,3 @@ create table order_detail(
   foreign key(product_id) references product(p_id),
   foreign key(order_id) references orders(o_id)
 );
-
