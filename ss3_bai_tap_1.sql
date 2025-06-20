@@ -124,3 +124,36 @@ JOIN students s ON m.student_id = s.student_id
 JOIN subjects sub ON m.sub_id = sub.sub_id
 ORDER BY m.mark DESC, s.student_name ASC;
 
+
+-- Hiển thị số lượng sinh viên ở từng nơi
+SELECT adress, COUNT(student_id) AS 'Số lượng sinh viên từng nơi'
+FROM students
+GROUP BY adress ;
+
+-- Tính điểm trung bình các môn học của mỗi sinh viên bằng cách sử dụng hàm AVG và hiển thị điều kiện điểm trung bình các môn phải lớn hơn 15
+SELECT S.student_id , S.student_name, AVG(mark)
+FROM students S JOIN mark m ON S.student_id = m.student_id
+GROUP BY S.student_id, S.student_name
+HAVING AVG(mark) >= ALL (SELECT AVG(mark) FROM mark GROUP BY mark.student_id)
+-- HAVING AVG(mark) >15;
+
+-- Hiển thị tất cả các thông tin của môn học (bảng subjects) có credit lớn nhất
+
+SELECT  * FROM subjects s
+WHERE s.credit = (SELECT MAX(credit) FROM subjects);
+
+-- Hiển thị các thông tin môn học có điểm thi lớn nhất.
+SELECT s.* , m.mark FROM subjects s
+JOIN mark m ON s.sub_id = m.sub_id 
+WHERE m.mark=(SELECT MAX(mark)FROM mark)
+
+-- Hiển thị các thông tin sinh viên và điểm trung bình của mỗi sinh viên, xếp hạng theo thứ tự giảm dần 
+SELECT s. * , m.mark FROM students s
+JOIN mark m ON s.student_id = m.student_id
+WHERE m.mark=(SELECT AVG(mark) ORDER BY mark DESC)
+
+
+
+
+
+
