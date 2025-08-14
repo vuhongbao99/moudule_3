@@ -124,3 +124,32 @@ ALTER TABLE borrows
   group by b.id_books , b.title
   order by borrows_count desc
   limit 2;
+  
+  -- Thống kê các đầu sách chưa được mượn
+  select
+  b.id_books,
+  b.title
+  from books b
+  left join borrows br ON br.id_books = b.id_books
+  where br.id_books = 0
+  
+  -- Lấy ra các học viên đả từng mượn sách và sắp xếp theo số lượng mượn sách từ lớn đến nhỏ
+  select 
+  s.id_students,
+  s.name_student,
+  count(*) as students_borrows
+  from students s
+  left join borrows br ON br.id_students = s.id_students
+  group by s.id_students, s.name_student
+  order by students_borrows desc
+  
+  -- Lấy ra các học viên mượn sách nhiều nhất của thư viện
+  select 
+  s.id_students,
+  s.name_student,
+  count(*) as students_borrows
+  from students s
+  left join borrows br ON br.id_students = s.id_students
+  group by s.id_students, s.name_student
+  order by students_borrows desc
+  limit 2
