@@ -153,3 +153,73 @@ ALTER TABLE borrows
   group by s.id_students, s.name_student
   order by students_borrows desc
   limit 2
+  
+  -- 1. Thống kê các đầu sách được mượn nhiều nhất
+SELECT 
+    b.id_books,
+    b.title,
+    a.name_authors,
+    c.name_category,
+    COUNT(br.id_books) as so_lan_muon
+FROM books b
+LEFT JOIN authors a ON b.id_authors = a.id_authors
+LEFT JOIN category c ON b.id_category = c.id_category
+LEFT JOIN borrows br ON b.id_books = br.id_books
+GROUP BY b.id_books, b.title, a.name_authors, c.name_category
+HAVING COUNT(br.id_books) > 0
+ORDER BY so_lan_muon DESC;
+
+-- 2. Thống kê các đầu sách chưa được mượn
+SELECT 
+    b.id_books,
+    b.title,
+    a.name_authors,
+    c.name_category,
+    b.page_size
+FROM books b
+LEFT JOIN authors a ON b.id_authors = a.id_authors
+LEFT JOIN category c ON b.id_category = c.id_category
+LEFT JOIN borrows br ON b.id_books = br.id_books
+WHERE br.id_books IS NULL
+ORDER BY b.title;
+
+-- 3. Lấy danh sách các học viên đã từng mượn sách và sắp xếp theo số lượng mượn từ lớn đến nhỏ
+SELECT 
+    s.id_students,
+    s.name_student,
+    s.dob,
+    s.class_name,
+    COUNT(br.id_books) as so_lan_muon
+FROM students s
+INNER JOIN borrows br ON s.id_students = br.id_students
+GROUP BY s.id_students, s.name_student, s.dob, s.class_name
+ORDER BY so_lan_muon DESC, s.name_student;
+
+-- 4. Lấy ra các học viên mượn nhiều sách nhất của thư viện
+SELECT 
+    s.id_students,
+    s.name_student,
+    s.dob,
+    s.class_name,
+    COUNT(br.id_books) as so_lan_muon
+FROM students s
+INNER JOIN borrows br ON s.id_students = br.id_students
+GROUP BY s.id_students, s.name_student, s.dob, s.class_name
+HAVING COUNT(br.id_books) = (
+    SELECT MAX(muon_count) 
+    FROM (
+        SELECT COUNT(id_books) as muon_count
+        FROM borrows
+        GROUP BY id_students
+    ) as max_borrows
+)
+ORDER BY s.name_student;
+
+-- Câu truy vấn phụ: Xem chi tiết số lần mượn của từng học viên
+SELECT 
+    s.name_student,
+    COUNT(br.id_books) as so_lan_muon
+FROM students s
+LEFT JOIN borrows br ON s.id_students = br.id_students
+GROUP BY s.id_students, s.name_student
+ORDER BY so_lan_muon DESC, s.name_student;
