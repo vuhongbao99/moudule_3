@@ -223,3 +223,125 @@ FROM students s
 LEFT JOIN borrows br ON s.id_students = br.id_students
 GROUP BY s.id_students, s.name_student
 ORDER BY so_lan_muon DESC, s.name_student;
+
+-- 1. Tạo INDEX cho cột title của bảng books
+CREATE INDEX idx_books_title ON books(title);
+
+-- Kiểm tra index đã tạo (tùy thuộc vào hệ quản trị CSDL)
+ SHOW INDEX FROM books; -- MySQL
+SELECT * FROM information_schema.statistics WHERE table_name = 'books'; -- MySQL
+
+-- 2. Tạo VIEW để lấy danh sách các quyển sách đã được mượn với số lần mượn
+CREATE VIEW v_borrowed_books AS
+SELECT 
+    b.id_books,
+    b.title,
+    b.page_size,
+    a.name_authors,
+    c.name_category,
+    COUNT(br.id_books) as so_lan_muon,
+    MIN(br.borrow_date) as lan_muon_dau_tien,
+    MAX(br.borrow_date) as lan_muon_gan_nhat
+FROM books b
+ JOIN authors a ON b.id_authors = a.id_authors
+ JOIN category c ON b.id_category = c.id_category
+ JOIN borrows br ON b.id_books = br.id_books
+GROUP BY b.id_books, b.title, b.page_size, a.name_authors, c.name_category
+ORDER BY so_lan_muon DESC, b.title;
+
+-- Cách sử dụng VIEW
+SELECT * FROM v_borrowed_books;
+SELECT * FROM v_borrowed_books WHERE so_lan_muon >= 2;
+
+-- 3. Stored Procedure thêm mới sách với tham số IN
+DELIMITER //
+
+CREATE PROCEDURE sp_add_new_book(
+    IN p_title VARCHAR(50),
+    IN p_page_size INT,
+    IN p_author_id INT,
+    IN p_category_id INT
+)
+BEGIN
+    -- Khai báo biến để xử lý lỗi
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    -- Bắt đầu transaction
+    START TRANSACTION;
+    
+    -- Kiểm tra author_id có tồn tại không
+    IF NOT EXISTS (SELECT 1 FROM authors WHERE id_authors = p_author_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Author ID không tồn tại';
+    END IF;
+    
+    -- Kiểm tra category_id có tồn tại không
+    IF NOT EXISTS (SELECT 1 FROM category WHERE id_category = p_category_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Category ID không tồn tại';
+    END IF;
+    
+    -- Kiểm tra title không được rỗng
+    IF p_title IS NULL OR TRIM(p_title) = '' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tiêu đề sách không được để trống';
+    END IF;
+    
+    -- Kiểm tra page_size phải > 0
+    IF p_page_size <= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Số trang phải lớn hơn 0';
+    END IF;
+    
+    -- Insert sách mới
+    INSERT INTO books (title, page_size, id_authors, id_category)
+    VALUES (p_title, p_page_size, p_author_id, p_category_id);
+    
+    -- Commit transaction
+    COMMIT;
+    
+    -- Thông báo thành công
+    SELECT 
+        LAST_INSERT_ID() as new_book_id,
+        p_title as title,
+        p_page_size as page_size,
+        (SELECT name_authors FROM authors WHERE id_authors = p_author_id) as author_name,
+        (SELECT name_category FROM category WHERE id_category = p_category_id) as category_name,
+        'Thêm sách thành công!' as message;
+        
+END //
+
+DELIMITER ;
+
+-- Cách sử dụng Stored Procedure:
+-- CALL sp_add_new_book('Sinh Học', 120, 1, 1);
+-- CALL sp_add_new_book('Truyện Kiều', 200, 2, 3);
+
+-- Test thử với dữ liệu hợp lệ:
+-- CALL sp_add_new_book('Vật Lý', 150, 3, 1);
+
+-- Test thử với dữ liệu không hợp lệ:
+-- CALL sp_add_new_book('', 100, 1, 1); -- Lỗi: title rỗng
+-- CALL sp_add_new_book('Test', -10, 1, 1); -- Lỗi: page_size âm
+-- CALL sp_add_new_book('Test', 100, 999, 1); -- Lỗi: author_id không tồn tại
+
+-- 4. Stored Procedure phiên bản đơn giản hơn (không có validation)
+DELIMITER //
+
+CREATE PROCEDURE sp_add_book_simple(
+    IN p_title VARCHAR(50),
+    IN p_page_size INT,
+    IN p_author_id INT,
+    IN p_category_id INT
+)
+BEGIN
+    INSERT INTO books (title, page_size, id_authors, id_category)
+    VALUES (p_title, p_page_size, p_author_id, p_category_id);
+    
+    SELECT CONCAT('Đã thêm sách: ', p_title, ' với ID: ', LAST_INSERT_ID()) as result;
+END //
+
+DELIMITER ;
+
+-- Cách sử dụng:
+-- CALL sp_add_book_simple('Anh Văn', 88, 4, 2);
